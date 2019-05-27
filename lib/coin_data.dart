@@ -33,10 +33,13 @@ const List<String> cryptoList = [
 ];
 
 class CoinData {
-  Future<CurrencyExchangeRate> getExchangeRate(String selectedCurrency) {
+  Future<CurrencyExchangeRate> getExchangeRate(
+    String selectedCurrency,
+    String crypto,
+  ) {
     return http
         .get(
-            'https://apiv2.bitcoinaverage.com/indices/global/ticker/BTC$selectedCurrency')
+            'https://apiv2.bitcoinaverage.com/indices/global/ticker/$crypto$selectedCurrency')
         .then((response) {
       return CurrencyExchangeRate.fromJson(json.decode(response.body));
     });

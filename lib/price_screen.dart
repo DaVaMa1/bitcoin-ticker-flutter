@@ -1,7 +1,9 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'dart:io' show Platform;
 
+import 'CryptoExchangeRateDisplay.dart';
 import 'coin_data.dart';
 
 class PriceScreen extends StatefulWidget {
@@ -11,33 +13,25 @@ class PriceScreen extends StatefulWidget {
 
 class _PriceScreenState extends State<PriceScreen> {
   String selectedCurrency = currenciesList.first;
-  List<Widget> cryptos = List<Widget>();
-
-  @override
-  initState() {
-    super.initState();
-    setState(() {
-      cryptos.addAll(
-        cryptoList.map((crypto) {
-          return CryptoExchangeRateDisplay(
-            crypto,
-            selectedCurrency: selectedCurrency,
-            selectedCurrencyExchangeRate: '?',
-          );
-        }),
-      );
-      cryptos.add(Container(
-        height: 150.0,
-        alignment: Alignment.center,
-        padding: EdgeInsets.only(bottom: 30.0),
-        color: Colors.lightBlue,
-        child: Platform.isAndroid ? getDropDown() : getPicker(),
-      ));
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
+    var widgets = List<Widget>();
+    var list = Provider.of<ExchangeRateList>(context);
+    cryptoList.forEach((crypto) {
+      widgets.add(
+        CryptoExchangeRateDisplay(list.getRate(crypto)),
+      );
+    });
+
+    widgets.add(Container(
+      height: 150.0,
+      alignment: Alignment.center,
+      padding: EdgeInsets.only(bottom: 30.0),
+      color: Colors.lightBlue,
+      child: Platform.isAndroid ? getDropDown() : getPicker(),
+    ));
+
     return Scaffold(
       appBar: AppBar(
         title: Text('🤑 Coin Ticker'),
@@ -45,7 +39,7 @@ class _PriceScreenState extends State<PriceScreen> {
       body: Column(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: cryptos,
+        children: widgets,
       ),
     );
   }
@@ -75,57 +69,16 @@ class _PriceScreenState extends State<PriceScreen> {
         onChanged: (value) {
           setState(() {
             selectedCurrency = value;
+            var list = Provider.of<ExchangeRateList>(context);
+            cryptoList.forEach((crypto) {
+              list.modifyRate('?', crypto);
+              list.setSelectedCurrency(value, crypto);
+            });
+            Future.forEach(cryptoList, (crypto) async {
+              var newRate = await CoinData().getExchangeRate(value, crypto);
+              list.modifyRate(newRate.last.toString(), crypto);
+            });
           });
         });
-  }
-}
-
-class CryptoExchangeRateDisplay extends StatefulWidget {
-  CryptoExchangeRateDisplay(
-    this.crypto, {
-    this.selectedCurrencyExchangeRate,
-    this.selectedCurrency,
-  });
-
-  final String selectedCurrencyExchangeRate;
-  final String selectedCurrency;
-  final String crypto;
-
-  @override
-  _CryptoExchangeRateDisplayState createState() =>
-      _CryptoExchangeRateDisplayState(
-          selectedCurrencyExchangeRate, selectedCurrency);
-}
-
-class _CryptoExchangeRateDisplayState extends State<CryptoExchangeRateDisplay> {
-  String selectedCurrencyExchangeRate;
-  String selectedCurrency;
-
-  _CryptoExchangeRateDisplayState(
-      this.selectedCurrencyExchangeRate, this.selectedCurrency);
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.fromLTRB(18.0, 18.0, 18.0, 0),
-      child: Card(
-        color: Colors.lightBlueAccent,
-        elevation: 5.0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10.0),
-        ),
-        child: Padding(
-          padding: EdgeInsets.symmetric(vertical: 15.0, horizontal: 28.0),
-          child: Text(
-            '${widget.crypto} = $selectedCurrencyExchangeRate $selectedCurrency',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 20.0,
-              color: Colors.white,
-            ),
-          ),
-        ),
-      ),
-    );
   }
 }
